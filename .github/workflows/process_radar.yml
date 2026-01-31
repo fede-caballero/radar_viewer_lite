@@ -19,18 +19,16 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
       env:
-        RCLONE_CONFIG_GDRIVE_TYPE: drive
-        RCLONE_CONFIG_GDRIVE_SCOPE: drive.readonly
-        # Requires user to set secrets: GDRIVE_CLIENT_ID, GDRIVE_CLIENT_SECRET, GDRIVE_TOKEN (JSON)
-        # OR just a full RCLONE_CONF secret. Let's assume RCLONE_CONF for simplicity in setup_rclone (need to adapt python script or env)
-        # Actually proper way:
-        RCLONE_CONFIG_GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
-        RCLONE_CONFIG_GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
-        RCLONE_CONFIG_GDRIVE_TOKEN: ${{ secrets.GDRIVE_TOKEN }}
+        # We'll use the RCLONE_CONF secret to create the config file
+        RCLONE_CONFIG_PATH: /app/rclone.conf
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create Rclone Config
+        run: |
+          echo "${{ secrets.RCLONE_CONF }}" > /app/rclone.conf
 
       - name: Run Processing Script
         run: |
