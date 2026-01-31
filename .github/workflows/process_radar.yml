@@ -49,11 +49,10 @@ jobs:
           
           python3 /app/process_radar.py
           
-          # Move output to workspace for commit
-          # We want to publish to gh-pages branch or just keep in data folder?
-          # Plan says: "commit to gh-pages branch"
-          
-          cp -r /app/output/* .
+          # Move output to workspace correctly
+          # /app/output contains images/ and data.json
+          # We want them in ./output for the deploy step
+          cp -a /app/output/. output/
 
       - name: Deploy Data to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
