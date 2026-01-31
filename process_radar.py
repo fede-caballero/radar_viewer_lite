@@ -4,24 +4,26 @@ import subprocess
 import glob
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import numpy as np
 import warnings
+import re
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
 
 # Config
 RCLONE_REMOTE = "gdrive" # Need to configure rclone.conf via secrets
-SOURCE_PATH = "cart_no_clutter" # From user request
+SOURCE_PATH = os.environ.get("RADAR_SOURCE_PATH", "cart_no_clutter") # Configurable via Env Var
 WORK_DIR = "/app/work"
 OUTPUT_DIR = "/app/output" # This will be deployed to gh-pages
 MDV_DIR = os.path.join(WORK_DIR, "mdv")
 NC_DIR = os.path.join(WORK_DIR, "nc")
 IMAGES_DIR = os.path.join(OUTPUT_DIR, "images")
+ROLLING_WINDOW_SIZE = 5
 
 # Ensure dirs
 for d in [MDV_DIR, NC_DIR, IMAGES_DIR]:
@@ -39,11 +41,13 @@ def setup_rclone():
 def download_mdv():
     """Download new MDV files"""
     logging.info("Downloading MDV files...")
-    # --min-age 1s to avoid partial files if needed, or check logic
-    # Sync or copy? Copy is safer to keep history if needed, but we don't want to fill disk.
-    # Start with fetching recent files.
-    # Assuming the drive folder has files like 20250130_200000.mdv
-    cmd = ["rclone", "copy", f"{RCLONE_REMOTE}:{SOURCE_PATH}", MDV_DIR, "--include", "*.mdv", "--verbose"]
+    # Select files from the last 2 hours to ensure we cover gaps but don't download history
+    # This assumes the cron runs frequently. 
+    # We might need to look back slightly more if there are delays.
+    cmd = ["rclone", "copy", f"{RCLONE_REMOTE}:{SOURCE_PATH}", MDV_DIR, 
+           "--include", "*.mdv", 
+           "--max-age", "2h",
+           "--verbose"]
     subprocess.run(cmd, check=True)
 
 def convert_mdv_to_nc(mdv_path):
@@ -167,17 +171,58 @@ def main():
     setup_rclone()
     download_mdv()
     
-    mdv_files = sorted(glob.glob(os.path.join(MDV_DIR, "*.mdv")))
+    # Recursive search for MDV files (handling YYYYMMDD subfolders)
+    mdv_files = glob.glob(os.path.join(MDV_DIR, "**", "*.mdv"), recursive=True)
+    
+    # Parse timestamps for sorting
+    # Filename format expected: 20260130_200000.mdv
+    file_list = []
+    for f in mdv_files:
+        basename = os.path.basename(f)
+        try:
+            # Extract timestamp YYYYMMDD_HHMMSS
+            # Adjust regex if filename has prefix/suffix
+            match = re.search(r'(\d{8}_\d{6})', basename)
+            if match:
+                ts_str = match.group(1)
+                dt = datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
+                file_list.append({'path': f, 'dt': dt, 'basename': basename})
+        except ValueError:
+            logging.warning(f"Skipping file with unknown format: {basename}")
+            
+    # Sort by datetime
+    file_list.sort(key=lambda x: x['dt'])
+    
+    # Keep only the last N files (Rolling Window)
+    if not file_list:
+        logging.info("No MDV files found.")
+        return
+
+    # Select the target files
+    target_files = file_list[-ROLLING_WINDOW_SIZE:]
+    logging.info(f"Processing latest {len(target_files)} files: {[x['basename'] for x in target_files]}")
     
     data_list = []
     
-    for mdv in mdv_files:
+    # Clean up output directory (remove old images not in target list)
+    # This prevents the output folder from growing indefinitely
+    # and ensures users only see what's in data.json (though frontend usually dictates that)
+    # But clean disk is good.
+    existing_images = glob.glob(os.path.join(IMAGES_DIR, "*.png"))
+    target_image_names = [f"{x['basename'].replace('.mdv', '')}.png" for x in target_files]
+    
+    for img_path in existing_images:
+        if os.path.basename(img_path) not in target_image_names:
+            logging.info(f"Cleaning up old image: {os.path.basename(img_path)}")
+            os.remove(img_path)
+            if os.path.exists(img_path + ".json"):
+                os.remove(img_path + ".json")
+
+    for item in target_files:
+        mdv = item['path']
         nc = convert_mdv_to_nc(mdv)
         if nc:
-            # Timestamp from filename (assuming format YYYYMMDD_HHMMSS.mdv)
-            basename = os.path.basename(mdv).replace(".mdv", "") # 20250130_200000
-            
-            # Format output filename
+            basename = item['basename'].replace(".mdv", "")
             img_filename = f"{basename}.png"
             img_path = os.path.join(IMAGES_DIR, img_filename)
             
@@ -185,11 +230,10 @@ def main():
             
             if bounds:
                 # Add to data list
-                # URL will be relative for frontend: "images/..."
                 data_list.append({
                     "url": f"images/{img_filename}",
                     "bounds": bounds,
-                    "target_time": basename # Raw string for now, frontend handles display
+                    "target_time": basename
                 })
     
     # Write data.json

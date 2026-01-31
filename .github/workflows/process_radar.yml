@@ -21,6 +21,7 @@ jobs:
       env:
         # We'll use the RCLONE_CONF secret to create the config file
         RCLONE_CONFIG_PATH: /app/rclone.conf
+        RADAR_SOURCE_PATH: cart_no_clutter # CHANGE THIS if your Drive folder is named differently
 
     steps:
       - name: Checkout code
