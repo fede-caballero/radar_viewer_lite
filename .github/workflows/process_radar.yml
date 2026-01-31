@@ -1,0 +1,68 @@
+name: Process Radar Data
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Every 5 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        RCLONE_CONFIG_GDRIVE_TYPE: drive
+        RCLONE_CONFIG_GDRIVE_SCOPE: drive.readonly
+        # Requires user to set secrets: GDRIVE_CLIENT_ID, GDRIVE_CLIENT_SECRET, GDRIVE_TOKEN (JSON)
+        # OR just a full RCLONE_CONF secret. Let's assume RCLONE_CONF for simplicity in setup_rclone (need to adapt python script or env)
+        # Actually proper way:
+        RCLONE_CONFIG_GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+        RCLONE_CONFIG_GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+        RCLONE_CONFIG_GDRIVE_TOKEN: ${{ secrets.GDRIVE_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Processing Script
+        run: |
+          # python script is at /app/process_radar.py in the image
+          # but we need to mount the Output dir to the workspace so imports work?
+          # The script writes to /app/output or similar. 
+          # We need to persist that.
+          
+          # Override settings to write to current workspace
+          # Modify process_radar.py to accept arguments or just copy out?
+          
+          mkdir -p output/images
+          
+          # Run script (assuming it uses env or hardcoded paths, let's check script)
+          # Script uses /app/work and /app/output.
+          # We should copy /app/output to $GITHUB_WORKSPACE/public/data or similar
+          
+          python3 /app/process_radar.py
+          
+          # Move output to workspace for commit
+          # We want to publish to gh-pages branch or just keep in data folder?
+          # Plan says: "commit to gh-pages branch"
+          
+          cp -r /app/output/* .
+
+      - name: Deploy Data to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./output
+          destination_dir: data
+          keep_files: true
+          commit_message: "Update radar data"
+          user_name: "Radar Bot"
+          user_email: "bot@radar.lite"
