@@ -7,7 +7,7 @@ function App() {
   const [predictionFiles] = useState<ImageWithBounds[]>([])
 
   useEffect(() => {
-    fetch('/data/data.json') // Fetch from relative path on GitHub Pages
+    fetch('data/data.json') // Fetch from relative path (important for GitHub Pages subdir)
       .then(res => res.json())
       .then((data: ImageWithBounds[]) => {
         // Filter or sort if needed. Assuming backend provides sorted list.

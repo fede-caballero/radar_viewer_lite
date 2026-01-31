@@ -51,7 +51,7 @@ export function RadarVisualization({ inputFiles, predictionFiles, isProcessing: 
 
   // Load boundaries
   useEffect(() => {
-    fetch('/boundaries.json')
+    fetch('boundaries.json')
       .then(res => res.json())
       .then(data => setBoundariesData(data))
       .catch(err => console.error("Failed to load boundaries", err));
