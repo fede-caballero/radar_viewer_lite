@@ -10,12 +10,13 @@ function App() {
     fetch('data/data.json') // Fetch from relative path (important for GitHub Pages subdir)
       .then(res => res.json())
       .then((data: ImageWithBounds[]) => {
-        // Filter or sort if needed. Assuming backend provides sorted list.
-        // Identify predictions vs inputs if distinguishable? 
-        // Current backend puts everything in one list. logic might need adjustment if predictions are separate.
-        // For now, assume all are inputs or mix.
-        // user prompt said: "Backend... hace commit... data.json".
-        setInputFiles(data)
+        // Fix URLs to be relative to the app root (data/images/...)
+        // Backend provides "images/file.png", but strictly it lives in "data/images/file.png"
+        const fixedData = data.map(item => ({
+          ...item,
+          url: `data/${item.url}`
+        }))
+        setInputFiles(fixedData)
       })
       .catch(err => console.error("Failed to load radar data", err))
   }, [])
