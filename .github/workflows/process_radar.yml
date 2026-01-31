@@ -28,8 +28,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create Rclone Config
+        env:
+          RCLONE_CONF_CONTENT: ${{ secrets.RCLONE_CONF }}
         run: |
-          echo "${{ secrets.RCLONE_CONF }}" > /app/rclone.conf
+          echo "$RCLONE_CONF_CONTENT" > /app/rclone.conf
 
       - name: Run Processing Script
         run: |
