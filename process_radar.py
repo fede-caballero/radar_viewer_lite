@@ -177,8 +177,14 @@ def main():
         for name in files:
             logging.info(os.path.join(root, name))
 
-    # Recursive search for MDV files (handling YYYYMMDD subfolders)
-    mdv_files = glob.glob(os.path.join(MDV_DIR, "**", "*.mdv"), recursive=True)
+    # Manual walk to find files if glob fails unpredictably
+    mdv_files = []
+    for root, dirs, files in os.walk(MDV_DIR):
+        for name in files:
+            if name.endswith(".mdv"):
+                mdv_files.append(os.path.join(root, name))
+    
+    logging.info(f"Found {len(mdv_files)} MDV files via os.walk")
     
     # Parse timestamps for sorting
     # Filename format expected: 20260130_200000.mdv
