@@ -61,20 +61,50 @@ def convert_mdv_to_nc(mdv_path):
 
     # Create params file on the fly or use default
     # Mdv2NetCDF -f <file> -outDir <dir> -nc3
+    # Note: Mdv2NetCDF generates filenames like ncfdata_{basename}.nc or similar based on params.
+    # We will search for ANY .nc file generated in the content.
+    
     cmd = ["Mdv2NetCDF", "-f", mdv_path, "-outDir", NC_DIR, "-nc3"]
     logging.info(f"Converting {filename} to NC...")
     try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        # Verify output (Mdv2NetCDF output naming might add 'ncfdata' prefix or similar)
-        # Check generated file
-        generated = glob.glob(os.path.join(NC_DIR, f"*{base_name}*.nc"))
-        if generated:
-            return generated[0]
-        else:
-            logging.error(f"No NC file generated for {filename}")
+        # Capture output for debugging
+        result = subprocess.run(cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        if result.returncode != 0:
+            logging.error(f"Mdv2NetCDF failed: {result.stderr.decode()}")
             return None
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Conversion failed for {filename}: {e.stderr.decode()}")
+            
+        # Mdv2NetCDF behaves weirdly with naming. It often ignores -outDir or creates subdirs.
+        # But we passed -outDir.
+        # Let's find *any* .nc file in NC_DIR that contains our timestamp
+        # The basename is usually HHMMSS.mdv. 
+        # Mdv2NetCDF usually produces ncf_YYYYMMDD_HHMMSS.nc or similar.
+        
+        # Search strategy: Find files matching timestamp part of mdv
+        # mdv basename: 004908.mdv (HHMMSS)
+        # We know parent dir has date.
+        
+        time_part = base_name # HHMMSS
+        candidates = glob.glob(os.path.join(NC_DIR, f"*{time_part}*.nc"))
+        
+        if not candidates:
+             # Fallback: Check if it made a subdirectory?
+             # Or maybe lookup ANY new .nc file?
+             # For now let's just log what IS there
+             all_nc = glob.glob(os.path.join(NC_DIR, "*.nc"))
+             logging.warning(f"No candidates for *{time_part}*.nc. All NC files: {all_nc}")
+             return None
+             
+        # Pick the most consistent one
+        generated_nc = candidates[0]
+        
+        # Renaissance: Rename it to expected output path for consistency
+        os.rename(generated_nc, nc_out_path)
+        
+        return nc_out_path
+
+    except Exception as e:
+        logging.error(f"Conversion logic error for {filename}: {e}")
         return None
 
 def generate_image(nc_path, output_path):
