@@ -22,7 +22,7 @@ function App() {
   }, [])
 
   return (
-    <div className="w-screen h-screen">
+    <div className="fixed inset-0 w-full h-full overflow-hidden">
       <RadarVisualization
         inputFiles={inputFiles}
         predictionFiles={predictionFiles}
