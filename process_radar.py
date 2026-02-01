@@ -187,27 +187,41 @@ def main():
     logging.info(f"Found {len(mdv_files)} MDV files via os.walk")
     
     # Parse timestamps for sorting
-    # Filename format expected: 20260130_200000.mdv
+    # Filename format expected: YYYYMMDD/HHMMSS.mdv or YYYYMMDD_HHMMSS.mdv
     file_list = []
     for f in mdv_files:
         basename = os.path.basename(f)
+        dirname = os.path.dirname(f)
+        parent_dir = os.path.basename(dirname) # e.g. 20260201
+        
         try:
-            # Extract timestamp YYYYMMDD_HHMMSS
-            # Adjust regex if filename has prefix/suffix
-            match = re.search(r'(\d{8}_\d{6})', basename)
-            if match:
-                ts_str = match.group(1)
+            dt = None
+            # Case 1: YYYYMMDD_HHMMSS.mdv (flat structure)
+            match_flat = re.search(r'(\d{8}_\d{6})', basename)
+            if match_flat:
+                dt = datetime.strptime(match_flat.group(1), "%Y%m%d_%H%M%S")
+                
+            # Case 2: 20260201/003157.mdv (nested structure)
+            elif re.match(r'^\d{8}$', parent_dir) and re.match(r'^\d{6}\.mdv$', basename):
+                ts_str = f"{parent_dir}_{basename.replace('.mdv', '')}"
                 dt = datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
-                file_list.append({'path': f, 'dt': dt, 'basename': basename})
+            
+            if dt:
+                # Use flat basename for target naming to avoid navigation issues
+                # e.g. 20260201_003157.mdv
+                flat_basename = dt.strftime("%Y%m%d_%H%M%S.mdv")
+                file_list.append({'path': f, 'dt': dt, 'basename': flat_basename})
+            else:
+                 logging.warning(f"Skipping file with unknown format: {f}")
+
         except ValueError:
-            logging.warning(f"Skipping file with unknown format: {basename}")
+            logging.warning(f"Error parsing date for: {f}")
             
     # Sort by datetime
     file_list.sort(key=lambda x: x['dt'])
     
-    # Keep only the last N files (Rolling Window)
     if not file_list:
-        logging.info("No MDV files found.")
+        logging.info("No MDV files parsed correctly.")
         return
 
     # Select the target files
