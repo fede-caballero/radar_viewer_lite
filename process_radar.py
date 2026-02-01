@@ -162,22 +162,54 @@ def generate_image(nc_path, output_path):
         x = ds['x0'].values if 'x0' in ds else ds['longitude'].values
         y = ds['y0'].values if 'y0' in ds else ds['latitude'].values
         
+        from matplotlib.colors import ListedColormap, BoundaryNorm
+        
+        # TITAN / Typical Radar dBZ Color Scale
+        # Approx standard:
+        # <0: Transparent
+        # 0-10: 
+        # ... based on standard definitions or similar visual look.
+        # Let's define specific colors and levels.
+        
+        # Colors (R, G, B, A)
+        # Transparent for < 5 dBZ (or < 0 depending on noise)
+        colors = [
+            (0, 0, 0, 0),         # < 5: Transparent
+            (0, 236/255, 236/255, 1.0), # 5-10: Cyan
+            (1/255, 160/255, 246/255, 1.0), # 10-15: Azure
+            (0, 0, 246/255, 1.0),       # 15-20: Blue
+            (0, 255/255, 0, 1.0),       # 20-25: Green
+            (0, 200/255, 0, 1.0),       # 25-30: Dark Green
+            (0, 144/255, 0, 1.0),       # 30-35: Forest
+            (255/255, 255/255, 0, 1.0), # 35-40: Yellow
+            (231/255, 192/255, 0, 1.0), # 40-45: Orange-Yellow
+            (255/255, 144/255, 0, 1.0), # 45-50: Orange
+            (255/255, 0, 0, 1.0),       # 50-55: Red
+            (214/255, 0, 0, 1.0),       # 55-60: Dark Red
+            (192/255, 0, 0, 1.0),       # 60-65: Maroon
+            (255/255, 0, 255/255, 1.0), # 65-70: Magenta
+            (153/255, 85/255, 201/255, 1.0), # > 70: Purple
+            (255/255, 255/255, 255/255, 1.0) # Extreme
+        ]
+        
+        # Levels corresponding to color boundaries
+        # Note: composite_data is usually dBZ.
+        levels = [-30, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 100]
+        
+        cmap = ListedColormap(colors)
+        norm = BoundaryNorm(levels, ncolors=cmap.N, clip=True)
+
         # 4. Plot
         fig = plt.figure(figsize=(10, 10), dpi=150)
-        ax = fig.add_subplot(1, 1, 1, projection=projection) # Important: set projection?
-        # Note: In worker code: ax = fig.add_subplot(1, 1, 1); fig.patch.set_alpha(0)...
-        # But here we want a map? No, the worker code does NOT add map features (coastlines, etc), 
-        # it just plots the array and saves it transparently to overlay on MapLibre.
-        # So we just plot the image with extent.
+        ax = fig.add_subplot(1, 1, 1, projection=projection)
         
         fig.patch.set_alpha(0)
         ax.patch.set_alpha(0)
         ax.set_axis_off()
         
-        # Use imshow with origin lower
-        ax.imshow(composite_data, cmap='jet', origin='lower', vmin=0, vmax=70) # bounds are implicit in pixels? 
-        # Wait, simply saving the plot works if we don't have axis. 
-        # But MapLibre needs georeferenced coords.
+        # Use imshow with explicit norm and cmap
+        # Note: vmin/vmax are ignored if norm is provided
+        ax.imshow(composite_data, cmap=cmap, norm=norm, origin='lower')
         
         plt.tight_layout(pad=0)
         plt.savefig(output_path, dpi=150, transparent=True, bbox_inches='tight', pad_inches=0)

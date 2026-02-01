@@ -32,7 +32,8 @@ function App() {
   }, [])
 
   return (
-    <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden m-0 p-0">
+  return (
+    <div className="fixed inset-0 w-screen h-screen m-0 p-0 overflow-hidden" style={{ height: '100vh' }}>
       <RadarVisualization
         inputFiles={inputFiles}
         predictionFiles={predictionFiles}
