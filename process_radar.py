@@ -64,7 +64,12 @@ def convert_mdv_to_nc(mdv_path):
     # Note: Mdv2NetCDF generates filenames like ncfdata_{basename}.nc or similar based on params.
     # We will search for ANY .nc file generated in the content.
     
-    cmd = ["Mdv2NetCDF", "-f", mdv_path, "-outDir", NC_DIR, "-nc3", "-v"]
+    # Debug: Check libraries
+    # subprocess.run(["ldd", "/usr/local/lrose/bin/Mdv2NetCDF"], check=False)
+
+    # Use lowercase -outdir as per user script example. 
+    # Also remove -nc3 just in case it conflicts or is default.
+    cmd = ["Mdv2NetCDF", "-f", mdv_path, "-outdir", NC_DIR, "-v"]
     logging.info(f"Converting {filename} to NC...")
     try:
         # Capture output for debugging
