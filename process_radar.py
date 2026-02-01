@@ -64,7 +64,7 @@ def convert_mdv_to_nc(mdv_path):
     # Note: Mdv2NetCDF generates filenames like ncfdata_{basename}.nc or similar based on params.
     # We will search for ANY .nc file generated in the content.
     
-    cmd = ["Mdv2NetCDF", "-f", mdv_path, "-outDir", NC_DIR, "-nc3"]
+    cmd = ["Mdv2NetCDF", "-f", mdv_path, "-outDir", NC_DIR, "-nc3", "-v"]
     logging.info(f"Converting {filename} to NC...")
     try:
         # Capture output for debugging
@@ -72,6 +72,7 @@ def convert_mdv_to_nc(mdv_path):
         
         if result.returncode != 0:
             logging.error(f"Mdv2NetCDF failed: {result.stderr.decode()}")
+            logging.error(f"STDOUT: {result.stdout.decode()}")
             return None
             
         # Mdv2NetCDF behaves weirdly with naming. It often ignores -outDir or creates subdirs.
@@ -85,21 +86,34 @@ def convert_mdv_to_nc(mdv_path):
         # We know parent dir has date.
         
         time_part = base_name # HHMMSS
-        candidates = glob.glob(os.path.join(NC_DIR, f"*{time_part}*.nc"))
+        
+        candidates = []
+        for root, dirs, files in os.walk(NC_DIR):
+            for f in files:
+                if f.endswith(".nc") and time_part in f:
+                    candidates.append(os.path.join(root, f))
         
         if not candidates:
-             # Fallback: Check if it made a subdirectory?
-             # Or maybe lookup ANY new .nc file?
-             # For now let's just log what IS there
-             all_nc = glob.glob(os.path.join(NC_DIR, "*.nc"))
-             logging.warning(f"No candidates for *{time_part}*.nc. All NC files: {all_nc}")
+             # Fallback: Check for ANY new nc file?
+             logging.warning(f"No candidates for *{time_part}*.nc.")
+             logging.info(f"Mdv2NetCDF STDOUT:\n{result.stdout.decode()}")
+             
+             # Log all NC files found recursively
+             all_nc = []
+             for root, dirs, files in os.walk(NC_DIR):
+                 for f in files:
+                     if f.endswith(".nc"):
+                         all_nc.append(os.path.join(root, f))
+             logging.warning(f"All NC files found in {NC_DIR}: {all_nc}")
              return None
              
         # Pick the most consistent one
         generated_nc = candidates[0]
         
         # Renaissance: Rename it to expected output path for consistency
-        os.rename(generated_nc, nc_out_path)
+        # If it's already in the right place, os.rename works (or overwrite)
+        if generated_nc != nc_out_path:
+             os.rename(generated_nc, nc_out_path)
         
         return nc_out_path
 
