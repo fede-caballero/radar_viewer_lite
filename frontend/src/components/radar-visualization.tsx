@@ -153,7 +153,7 @@ export function RadarVisualization({ inputFiles, predictionFiles, isProcessing: 
   };
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="absolute inset-0 bg-black w-full h-full overflow-hidden">
       <Map
         ref={mapRef}
         initialViewState={INITIAL_VIEW_STATE}

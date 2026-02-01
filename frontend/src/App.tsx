@@ -6,19 +6,29 @@ function App() {
   const [inputFiles, setInputFiles] = useState<ImageWithBounds[]>([])
   const [predictionFiles] = useState<ImageWithBounds[]>([])
 
-  useEffect(() => {
-    fetch('data/data.json') // Fetch from relative path (important for GitHub Pages subdir)
+  const fetchData = () => {
+    fetch('data/data.json') // Fetch from relative path
       .then(res => res.json())
       .then((data: ImageWithBounds[]) => {
-        // Fix URLs to be relative to the app root (data/images/...)
-        // Backend provides "images/file.png", but strictly it lives in "data/images/file.png"
         const fixedData = data.map(item => ({
           ...item,
           url: `data/${item.url}`
         }))
-        setInputFiles(fixedData)
+        // Only update if data changed (simple length check or deep comparison could be better but this is Lite)
+        setInputFiles(prev => {
+          if (JSON.stringify(prev) !== JSON.stringify(fixedData)) {
+            return fixedData;
+          }
+          return prev;
+        })
       })
       .catch(err => console.error("Failed to load radar data", err))
+  }
+
+  useEffect(() => {
+    fetchData(); // Initial load
+    const interval = setInterval(fetchData, 60000); // Poll every 60s
+    return () => clearInterval(interval);
   }, [])
 
   return (
