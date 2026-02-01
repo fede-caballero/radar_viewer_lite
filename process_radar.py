@@ -171,6 +171,12 @@ def main():
     setup_rclone()
     download_mdv()
     
+    # Debug: List what rclone downloaded
+    logging.info(f"Listing MDV_DIR ({MDV_DIR}) contents:")
+    for root, dirs, files in os.walk(MDV_DIR):
+        for name in files:
+            logging.info(os.path.join(root, name))
+
     # Recursive search for MDV files (handling YYYYMMDD subfolders)
     mdv_files = glob.glob(os.path.join(MDV_DIR, "**", "*.mdv"), recursive=True)
     
