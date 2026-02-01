@@ -24,6 +24,9 @@ RUN curl https://rclone.org/install.sh | bash
 COPY lrose-core-20250105.ubuntu_22.04.amd64.deb /tmp/lrose.deb
 RUN apt-get update && apt-get install -y /tmp/lrose.deb && rm /tmp/lrose.deb
 
+# Add LROSE to PATH
+ENV PATH="/usr/local/lrose/bin:${PATH}"
+
 # Install Python dependencies
 # Cartopy requires libgeos-dev (usually handled by wheel, but good to know)
 RUN pip3 install --no-cache-dir \
