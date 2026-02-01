@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Play, Pause, RotateCcw, Calendar, Clock } from "lucide-react"
-import { ImageWithBounds } from "@/lib/api"
-import Map, { Source, Layer, NavigationControl, ScaleControl, FullscreenControl, GeolocateControl, MapRef } from 'react-map-gl/maplibre'
+import type { ImageWithBounds } from "@/lib/api"
+import Map, { Source, Layer, NavigationControl, ScaleControl, FullscreenControl, GeolocateControl, type MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 interface RadarVisualizationProps {
@@ -35,7 +35,7 @@ function haversineDistance(coords1: { lat: number, lon: number }, coords2: { lat
   return R * c;
 }
 
-export function RadarVisualization({ inputFiles, predictionFiles, isProcessing }: RadarVisualizationProps) {
+export function RadarVisualization({ inputFiles, predictionFiles, isProcessing: _ }: RadarVisualizationProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0)
   const [boundariesData, setBoundariesData] = useState<any>(null)
